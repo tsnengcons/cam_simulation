@@ -28,7 +28,6 @@ SURFACES = {
     'Tacky': 0.80,
 }
 
-
 # ==========================================
 # 2. PARAMETERS
 # ==========================================
@@ -50,7 +49,7 @@ class SimParams:
         self.geo = {
             "N": 7,
             "d": 0.001,
-            "R_s": 0.002,  # Sphere Radius
+            "R_s": 0.002,     # Sphere Radius
             "R": 0.008,
             "socket_angle_deg": 5,
             "theta0": np.pi / 2
@@ -83,7 +82,7 @@ class SimParams:
 
         # --- Limits ---
         self.max_vel_rot = 6000.0  # rad/s
-        self.max_force = 2000.0  # N
+        self.max_force = 2000.0    # N
 
         # --- Derived ---
         total_phys_steps = self.t_end / self.dt
@@ -100,7 +99,6 @@ def rot2(theta):
     c, s = np.cos(theta), np.sin(theta)
     return np.array([[c, -s], [s, c]])
 
-
 def get_closest_point_on_segment(P, A, B):
     AP = P - A
     AB = B - A
@@ -110,7 +108,6 @@ def get_closest_point_on_segment(P, A, B):
     t = np.clip(t, 0.0, 1.0)
     return A + t * AB
 
-
 # ==========================================
 # 4. DYNAMICS ENGINE
 # ==========================================
@@ -118,7 +115,7 @@ def get_closest_point_on_segment(P, A, B):
 class CamSystemSimulation:
     def __init__(self, params):
         self.p = params
-
+        
         # --- Initialize Geometry ---
         ic = ic_generator.get_initial_state_from_params(**self.p.geo)
         self.C0 = np.array(ic['C0'])
@@ -136,10 +133,10 @@ class CamSystemSimulation:
 
         # --- Mass Properties ---
         r_s = self.p.geo['R_s']
-        vol_s = (4.0 / 3.0) * np.pi * (r_s ** 3)
+        vol_s = (4.0/3.0) * np.pi * (r_s**3)
         rho = MATERIALS[self.p.mat_type]['rho']
         self.m_c = rho * vol_s
-        self.I_c = 0.4 * self.m_c * (r_s ** 2)
+        self.I_c = 0.4 * self.m_c * (r_s**2)
 
         self.I_w = ic['mass_props']['wheel']['I']
         self.I_a = self.I_w * self.p.I_axis_factor
@@ -150,8 +147,8 @@ class CamSystemSimulation:
         self.state = {
             'c_pos': self.C0.copy(),
             'c_vel': np.zeros(2),
-            'c_theta': 0.0,
-            'c_omega': 0.0,
+            'c_theta': 0.0,      
+            'c_omega': 0.0,      
             'w_theta': self.p.geo['theta0'],
             'w_omega': 0.0,
             'a_theta': self.p.geo['theta0'],
@@ -161,15 +158,13 @@ class CamSystemSimulation:
         self.is_latched = False
         # UPDATED HISTORY: Added specific force tracking
         self.history = {k: [] for k in
-                        ['t', 'c_x', 'c_y', 'c_theta', 'c_omega', 'w_theta',
+                        ['t', 'c_x', 'c_y', 'c_theta', 'c_omega', 'w_theta', 
                          'w_omega', 'a_theta', 'f_contact_x', 'f_input']}
 
         self.fig_anim = None
         self.ax_geo = None
-        self.ln_wheel = None;
-        self.ln_axis = None
-        self.patch_circle = None;
-        self.patch_stripe = None
+        self.ln_wheel = None; self.ln_axis = None
+        self.patch_circle = None; self.patch_stripe = None
         self.txt_info = None
 
     def tune_contact_physics(self):
@@ -207,7 +202,7 @@ class CamSystemSimulation:
                     n_local /= np.linalg.norm(n_local)
                 else:
                     n_local = (C_local - Q_local) / dist
-
+                
                 R_mat = rot2(self.state['w_theta'])
                 n_world = R_mat @ n_local
                 Q_world = R_mat @ Q_local
@@ -222,7 +217,7 @@ class CamSystemSimulation:
         tau_c_net = 0.0
         tau_w_net = 0.0
         tau_a_net = 0.0
-
+        
         # Track specific horizontal forces for graphing
         f_contact_x_val = 0.0
 
@@ -244,11 +239,11 @@ class CamSystemSimulation:
 
         # 4. Contact
         contact = self.detect_contact()
-
+        
         if contact:
             pen, n_vec, Q_world = contact
-            r_w = Q_world
-            r_c = -p.geo['R_s'] * n_vec
+            r_w = Q_world 
+            r_c = -p.geo['R_s'] * n_vec 
 
             v_w_surf = np.array([-s['w_omega'] * r_w[1], s['w_omega'] * r_w[0]])
             v_rot_c = np.array([-s['c_omega'] * r_c[1], s['c_omega'] * r_c[0]])
@@ -260,11 +255,11 @@ class CamSystemSimulation:
             Fn = max(0.0, self.k_contact * (pen ** 1.5) - self.c_contact * v_rel_n)
             Fn = min(Fn, p.max_force)
             F_N_vec = Fn * n_vec
-
+            
             # Friction Force
             t_vec = np.array([-n_vec[1], n_vec[0]])
             v_slip = np.dot(v_rel, t_vec)
-            v_thresh = 0.01
+            v_thresh = 0.01 
             friction_coeff = p.mu_friction * np.tanh(v_slip / v_thresh)
             F_f_mag = friction_coeff * Fn
             F_F_vec = -F_f_mag * t_vec
@@ -272,16 +267,16 @@ class CamSystemSimulation:
             # Total Contact Force on Circle
             F_total_contact = F_N_vec + F_F_vec
             F_c_net += F_total_contact
-
+            
             # Save Horizontal component (Reaction Force)
             f_contact_x_val = F_total_contact[0]
 
             # Torque on Circle
-            tau_c_friction = r_c[0] * F_F_vec[1] - r_c[1] * F_F_vec[0]
+            tau_c_friction = r_c[0]*F_F_vec[1] - r_c[1]*F_F_vec[0]
             tau_c_net += tau_c_friction
 
             # Torque on Wheel
-            tau_w_net += (r_w[0] * (-F_total_contact[1]) - r_w[1] * (-F_total_contact[0]))
+            tau_w_net += (r_w[0]*(-F_total_contact[1]) - r_w[1]*(-F_total_contact[0]))
 
         # 5. Constraints & Limits
         if s['c_pos'][0] < self.C0[0]:
@@ -292,13 +287,13 @@ class CamSystemSimulation:
         curr_y = s['c_pos'][1]
         floor = self.C0[1]
         ceil = self.C0[1] + p.max_disp_y
-
+        
         if curr_y < floor:
             s['c_pos'][1] = floor
             if s['c_vel'][1] < 0: s['c_vel'][1] = 0.0
             if abs(s['c_vel'][0]) > 1e-4:
-                drag = -5.0 * s['c_vel'][0]
-                F_c_net[0] += drag
+                 drag = -5.0 * s['c_vel'][0] 
+                 F_c_net[0] += drag
         elif curr_y > ceil:
             s['c_pos'][1] = ceil
             if s['c_vel'][1] > 0: s['c_vel'][1] = 0.0
@@ -312,7 +307,7 @@ class CamSystemSimulation:
                 s['c_vel'][0] = 0.0
                 s['c_omega'] = 0.0
                 F_c_net[0] = 0.0
-
+        
         if self.is_latched:
             if F_c_net[0] < -p.F_latch_release:
                 self.is_latched = False
@@ -327,7 +322,7 @@ class CamSystemSimulation:
         alpha_c = tau_c_net / self.I_c
         alpha_w = tau_w_net / self.I_w
         alpha_a = tau_a_net / self.I_a
-
+        
         if s['a_omega'] <= 1e-5 and tau_a_net < 0:
             alpha_a = 0.0
             s['a_omega'] = 0.0
@@ -340,7 +335,7 @@ class CamSystemSimulation:
         # Safety Clamps
         s['w_omega'] = np.clip(s['w_omega'], -p.max_vel_rot, p.max_vel_rot)
         s['a_omega'] = np.clip(s['a_omega'], -p.max_vel_rot, p.max_vel_rot)
-        s['c_omega'] = np.clip(s['c_omega'], -p.max_vel_rot * 2, p.max_vel_rot * 2)
+        s['c_omega'] = np.clip(s['c_omega'], -p.max_vel_rot*2, p.max_vel_rot*2)
 
         s['c_pos'] += s['c_vel'] * p.dt
         s['c_theta'] += s['c_omega'] * p.dt
@@ -372,9 +367,9 @@ class CamSystemSimulation:
         self.ax_geo = self.fig_anim.add_subplot(111)
         self.ax_geo.set_aspect('equal')
         self.ax_geo.grid(True)
-        self.ax_geo.set_xlim(-1.2 * self.p.geo['R'], 1.2 * self.p.geo['R'])
-        self.ax_geo.set_ylim(-1.2 * self.p.geo['R'], 1.2 * self.p.geo['R'])
-
+        self.ax_geo.set_xlim(-1.2*self.p.geo['R'], 1.2*self.p.geo['R'])
+        self.ax_geo.set_ylim(-1.2*self.p.geo['R'], 1.2*self.p.geo['R'])
+        
         floor = self.C0[1]
         ceil = self.C0[1] + self.p.max_disp_y
         self.ax_geo.axhline(floor, color='b', ls=':', alpha=0.5)
@@ -382,7 +377,7 @@ class CamSystemSimulation:
 
         self.ln_wheel, = self.ax_geo.plot([], [], 'k-', lw=1.5)
         self.ln_axis, = self.ax_geo.plot([], [], 'g--', lw=2)
-
+        
         self.patch_circle = Circle((0, 0), radius=self.p.geo['R_s'], color='red', alpha=0.6)
         self.ax_geo.add_patch(self.patch_circle)
         self.patch_stripe, = self.ax_geo.plot([], [], 'w-', lw=2)
@@ -391,7 +386,7 @@ class CamSystemSimulation:
     def update_anim_frame(self, frame_idx):
         idx = frame_idx
         if idx >= len(self.history['t']): idx = len(self.history['t']) - 1
-
+        
         t = self.history['t'][idx]
         w_theta = self.history['w_theta'][idx]
         c_pos = [self.history['c_x'][idx], self.history['c_y'][idx]]
@@ -402,16 +397,15 @@ class CamSystemSimulation:
         self.ln_wheel.set_data(pts[:, 0], pts[:, 1])
 
         self.patch_circle.center = c_pos
-
+        
         r = self.p.geo['R_s']
         stripe_local = np.array([[0, 0], [r, 0]])
         R_c = rot2(c_theta)
         stripe_world = (R_c @ stripe_local.T).T + np.array(c_pos)
         self.patch_stripe.set_data(stripe_world[:, 0], stripe_world[:, 1])
-
+        
         self.txt_info.set_text(f"t={t:.4f}s")
         return self.ln_wheel, self.patch_circle, self.patch_stripe
-
 
 # ==========================================
 # 5. LOCAL PLOTTING (Matched to Request)
@@ -431,9 +425,9 @@ def plot_results(hist):
 
     # 2. Circle Motion (X & Y)
     axs[1].set_title("2. Circle Motion")
-    axs[1].plot(t, np.array(hist['c_x']) * 1000, label='Horiz X', color='red')
+    axs[1].plot(t, np.array(hist['c_x'])*1000, label='Horiz X', color='red')
     ax1b = axs[1].twinx()
-    y_disp = (np.array(hist['c_y']) - hist['c_y'][0]) * 1000
+    y_disp = (np.array(hist['c_y']) - hist['c_y'][0])*1000
     ax1b.plot(t, y_disp, label='Vert Y', color='cyan')
     axs[1].set_ylabel('Horiz X [mm]', color='red')
     ax1b.set_ylabel('Vert Y [mm]', color='cyan')
@@ -453,7 +447,6 @@ def plot_results(hist):
 
     plt.tight_layout()
     plt.show()
-
 
 if __name__ == "__main__":
     params = SimParams()
